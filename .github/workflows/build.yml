@@ -1,0 +1,43 @@
+name: Build Ouaitotune
+
+on:
+  push:
+  workflow_dispatch:
+
+jobs:
+  macos:
+    runs-on: macos-14
+    steps:
+      - uses: actions/checkout@v4
+      - name: Configure (universal: Apple Silicon + Intel)
+        run: cmake -B build -G Xcode -DCMAKE_OSX_ARCHITECTURES="arm64;x86_64"
+      - name: Build VST3 + AU
+        run: cmake --build build --config Release --target Ouaitotune_VST3 Ouaitotune_AU -- -quiet
+      - name: Ad-hoc sign
+        run: |
+          codesign --force --deep -s - build/Ouaitotune_artefacts/Release/VST3/Ouaitotune.vst3
+          codesign --force --deep -s - build/Ouaitotune_artefacts/Release/AU/Ouaitotune.component
+      - name: Package
+        run: |
+          mkdir out
+          cp -R build/Ouaitotune_artefacts/Release/VST3/Ouaitotune.vst3 out/
+          cp -R build/Ouaitotune_artefacts/Release/AU/Ouaitotune.component out/
+          cp LISEZMOI.md out/
+          cd out && zip -r -y ../Ouaitotune-macOS.zip .
+      - uses: actions/upload-artifact@v4
+        with:
+          name: Ouaitotune-macOS
+          path: Ouaitotune-macOS.zip
+
+  windows:
+    runs-on: windows-latest
+    steps:
+      - uses: actions/checkout@v4
+      - name: Configure
+        run: cmake -B build
+      - name: Build VST3
+        run: cmake --build build --config Release --target Ouaitotune_VST3
+      - uses: actions/upload-artifact@v4
+        with:
+          name: Ouaitotune-Windows-VST3
+          path: build/Ouaitotune_artefacts/Release/VST3
