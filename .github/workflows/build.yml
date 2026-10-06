@@ -2,7 +2,11 @@ name: Build Ouaitotune
 
 on:
   push:
+    branches: [main]
   workflow_dispatch:
+
+permissions:
+  contents: write
 
 jobs:
   macos:
@@ -28,6 +32,19 @@ jobs:
         with:
           name: Ouaitotune-macOS
           path: Ouaitotune-macOS.zip
+      - name: Publish build to the "builds-macos" branch
+        shell: bash
+        run: |
+          mkdir -p /tmp/pub && cp Ouaitotune-macOS.zip /tmp/pub/
+          git config user.name "github-actions"
+          git config user.email "github-actions@users.noreply.github.com"
+          git checkout --orphan publish
+          git rm -rf --cached . > /dev/null
+          git clean -fdxq
+          cp /tmp/pub/* .
+          git add -f *.zip
+          git commit -qm "build ${{ github.sha }}"
+          git push -f origin HEAD:builds-macos
 
   windows:
     runs-on: windows-latest
@@ -37,7 +54,23 @@ jobs:
         run: cmake -B build
       - name: Build VST3
         run: cmake --build build --config Release --target Ouaitotune_VST3
+      - name: Package
+        shell: bash
+        run: cd build/Ouaitotune_artefacts/Release/VST3 && 7z a -tzip ../../../../Ouaitotune-Windows-VST3.zip Ouaitotune.vst3 > /dev/null
       - uses: actions/upload-artifact@v4
         with:
           name: Ouaitotune-Windows-VST3
-          path: build/Ouaitotune_artefacts/Release/VST3
+          path: Ouaitotune-Windows-VST3.zip
+      - name: Publish build to the "builds-windows" branch
+        shell: bash
+        run: |
+          mkdir -p /tmp/pub && cp Ouaitotune-Windows-VST3.zip /tmp/pub/
+          git config user.name "github-actions"
+          git config user.email "github-actions@users.noreply.github.com"
+          git checkout --orphan publish
+          git rm -rf --cached . > /dev/null
+          git clean -fdxq
+          cp /tmp/pub/* .
+          git add -f *.zip
+          git commit -qm "build ${{ github.sha }}"
+          git push -f origin HEAD:builds-windows
